@@ -151,6 +151,22 @@ fn skip_comments_and_blanks() {
     assert_eq!(run(input), "10");
 }
 
+// --- Stray single-token lines are skipped (nx.parse_edgelist behaviour) ---
+
+/// A line with fewer than 2 whitespace tokens (a bare 'X') is skipped, exactly
+/// like nx.parse_edgelist. The remaining 3 edges form path_graph(4): oracle = 10.0.
+/// Verified: nx.parse_edgelist(['0 1','1 2','2 3','X']) → wiener_index = 10.0.
+#[test]
+fn skip_stray_single_token_line() {
+    assert_eq!(run("0 1\n1 2\n2 3\nX\n"), "10");
+}
+
+/// Stray token line in the middle is also skipped: oracle = 10.0.
+#[test]
+fn skip_stray_single_token_line_mid() {
+    assert_eq!(run("0 1\nX\n1 2\n2 3\n"), "10");
+}
+
 // --- Parallel edge dedup (nx.Graph silently ignores) ---
 
 #[test]

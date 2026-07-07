@@ -44,9 +44,11 @@ fn run() -> Option<f64> {
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
+        // nx.parse_edgelist skips lines with fewer than 2 whitespace tokens.
         let mut parts = trimmed.split_ascii_whitespace();
-        let u_str = parts.next()?;
-        let v_str = parts.next()?;
+        let (Some(u_str), Some(v_str)) = (parts.next(), parts.next()) else {
+            continue;
+        };
 
         let u = intern(u_str, &mut index, &mut adj);
         let v = intern(v_str, &mut index, &mut adj);
