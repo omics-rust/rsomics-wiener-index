@@ -15,21 +15,20 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
-    let result = run();
+    let Some(w) = run() else {
+        eprintln!("rsomics-wiener-index: Wiener index is undefined for the null graph (no nodes)");
+        std::process::exit(1);
+    };
     if cli.json {
-        match result {
-            Some(w) if w.is_infinite() => {
-                println!("{{\"wiener_index\":null,\"disconnected\":true}}")
-            }
-            Some(w) => println!("{{\"wiener_index\":{w}}}"),
-            None => println!("{{\"wiener_index\":0}}"),
+        if w.is_infinite() {
+            println!("{{\"wiener_index\":null,\"disconnected\":true}}");
+        } else {
+            println!("{{\"wiener_index\":{w}}}");
         }
+    } else if w.is_infinite() {
+        println!("inf");
     } else {
-        match result {
-            Some(w) if w.is_infinite() => println!("inf"),
-            Some(w) => println!("{w}"),
-            None => println!("0"),
-        }
+        println!("{w}");
     }
 }
 
@@ -40,8 +39,12 @@ fn run() -> Option<f64> {
 
     for line in stdin.lock().lines() {
         let line = line.expect("stdin read error");
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
+        // nx.parse_edgelist treats '#' as a comment anywhere in the line: it
+        // truncates at the first '#' before tokenising, so "1 2#c" -> edge (1,2)
+        // and "0 #1" -> a single token -> skipped.
+        let content = line.split('#').next().unwrap_or("");
+        let trimmed = content.trim();
+        if trimmed.is_empty() {
             continue;
         }
         // nx.parse_edgelist skips lines with fewer than 2 whitespace tokens.
@@ -62,7 +65,8 @@ fn run() -> Option<f64> {
 
     let n = adj.len();
     if n == 0 {
-        return Some(0.0);
+        // nx.wiener_index raises NetworkXPointlessConcept on the null graph.
+        return None;
     }
 
     // W = Σ_{unordered pairs} d(u,v)  [= (1/2) Σ_{ordered pairs}, matching nx for undirected]

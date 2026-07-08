@@ -117,13 +117,35 @@ fn k2() {
     assert_eq!(run("0 1\n"), "1");
 }
 
-/// Single node (no edges): oracle = 0.0
+/// Single node (self-loop only, no pairs): oracle = 0.0
 #[test]
 fn single_node() {
-    // Feed a comment line so we get a 1-node graph — but actually a single
-    // node with no edges produces 0 pairs → W=0. We test by having no edges.
-    // An empty stdin = 0 nodes = W=0 as well. Let's just confirm.
-    assert_eq!(run(""), "0");
+    assert_eq!(run("0 0\n"), "0");
+}
+
+/// Empty stdin is the null graph; nx.wiener_index raises
+/// NetworkXPointlessConcept, so we fail loud rather than emit a bogus 0.
+#[test]
+fn null_graph_errors() {
+    let out = Command::new(binary())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap()
+        .wait_with_output()
+        .unwrap();
+    assert!(!out.status.success(), "null graph must exit non-zero");
+}
+
+/// nx.parse_edgelist treats '#' as a comment anywhere in a line, truncating
+/// before it. "1 2#c" -> edge (1,2); "0 #1" -> single token -> line skipped.
+/// Both leave the path 0-1-2-3 intact: oracle = 10.0.
+#[test]
+fn inline_hash_comment_matches_nx() {
+    assert_eq!(run("0 1\n1 2#note\n2 3\n"), "10");
+    assert_eq!(run("0 1\n0 #1\n1 2\n2 3\n"), "10");
+    assert_eq!(run("0 1 # trailing\n1 2\n2 3\n"), "10");
 }
 
 // --- Disconnected → inf ---
